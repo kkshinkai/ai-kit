@@ -1,6 +1,13 @@
 import AIKit
 import Foundation
 
-let name = ProcessInfo.processInfo.environment["AIKIT_NAME"] ?? "Playground"
+@Generable(description: "Playground input.")
+struct PlaygroundInput {
+    @Guide(description: "Name to greet")
+    var name: String
+}
 
-print(AIKit.greeting(name: name))
+let name = ProcessInfo.processInfo.environment["AIKIT_NAME"] ?? "Playground"
+let input = PlaygroundInput(name: name)
+
+print(input.generatedContent.jsonString)
