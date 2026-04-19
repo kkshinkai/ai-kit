@@ -45,6 +45,28 @@ public struct GeneratedContent: Equatable, Sendable {
         self.init(kind: .structure(properties: propertiesByName, orderedKeys: orderedKeys), id: id)
     }
 
+    public init<S>(
+        properties: S,
+        id: GenerationID? = nil,
+        uniquingKeysWith combine: (GeneratedContent, GeneratedContent) throws -> any ConvertibleToGeneratedContent
+    ) rethrows where S: Sequence, S.Element == (name: String, value: any ConvertibleToGeneratedContent) {
+        var propertiesByName: [String: GeneratedContent] = [:]
+        var orderedKeys: [String] = []
+
+        for (name, value) in properties {
+            let generatedContent = value.generatedContent
+
+            if let existing = propertiesByName[name] {
+                propertiesByName[name] = try combine(existing, generatedContent).generatedContent
+            } else {
+                propertiesByName[name] = generatedContent
+                orderedKeys.append(name)
+            }
+        }
+
+        self.init(kind: .structure(properties: propertiesByName, orderedKeys: orderedKeys), id: id)
+    }
+
     public init<S>(elements: S, id: GenerationID? = nil) where S: Sequence, S.Element == any ConvertibleToGeneratedContent {
         self.init(kind: .array(elements.map(\.generatedContent)), id: id)
     }
@@ -152,7 +174,7 @@ extension GeneratedContent: Codable {
 
 extension GeneratedContent: ConvertibleFromGeneratedContent, ConvertibleToGeneratedContent, Generable {
     public static var generationSchema: GenerationSchema {
-        try! GenerationSchema(root: DynamicGenerationSchema(storage: .any))
+        try! GenerationSchema(root: DynamicGenerationSchema(storage: .any), dependencies: [])
     }
 
     public init(_ content: GeneratedContent) {

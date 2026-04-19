@@ -47,7 +47,7 @@ extension Optional: ConvertibleToGeneratedContent where Wrapped: ConvertibleToGe
 
 extension String: Generable {
     public static var generationSchema: GenerationSchema {
-        try! GenerationSchema(root: DynamicGenerationSchema(type: Self.self))
+        try! GenerationSchema(root: DynamicGenerationSchema(type: Self.self), dependencies: [])
     }
 
     public init(_ content: GeneratedContent) throws {
@@ -64,7 +64,7 @@ extension String: Generable {
 
 extension Bool: Generable {
     public static var generationSchema: GenerationSchema {
-        try! GenerationSchema(root: DynamicGenerationSchema(type: Self.self))
+        try! GenerationSchema(root: DynamicGenerationSchema(type: Self.self), dependencies: [])
     }
 
     public init(_ content: GeneratedContent) throws {
@@ -81,7 +81,7 @@ extension Bool: Generable {
 
 extension Int: Generable {
     public static var generationSchema: GenerationSchema {
-        try! GenerationSchema(root: DynamicGenerationSchema(type: Self.self))
+        try! GenerationSchema(root: DynamicGenerationSchema(type: Self.self), dependencies: [])
     }
 
     public init(_ content: GeneratedContent) throws {
@@ -104,7 +104,7 @@ extension Int: Generable {
 
 extension Double: Generable {
     public static var generationSchema: GenerationSchema {
-        try! GenerationSchema(root: DynamicGenerationSchema(type: Self.self))
+        try! GenerationSchema(root: DynamicGenerationSchema(type: Self.self), dependencies: [])
     }
 
     public init(_ content: GeneratedContent) throws {
@@ -119,9 +119,26 @@ extension Double: Generable {
     }
 }
 
+extension Float: Generable {
+    public static var generationSchema: GenerationSchema {
+        try! GenerationSchema(root: DynamicGenerationSchema(type: Self.self), dependencies: [])
+    }
+
+    public init(_ content: GeneratedContent) throws {
+        guard case let .number(value) = content.kind else {
+            throw GeneratedContentError.typeMismatch(expected: "number", actual: String(describing: content.kind))
+        }
+        self = NSDecimalNumber(decimal: value).floatValue
+    }
+
+    public var generatedContent: GeneratedContent {
+        GeneratedContent(kind: .number(Decimal(Double(self))))
+    }
+}
+
 extension Decimal: Generable {
     public static var generationSchema: GenerationSchema {
-        try! GenerationSchema(root: DynamicGenerationSchema(type: Self.self))
+        try! GenerationSchema(root: DynamicGenerationSchema(type: Self.self), dependencies: [])
     }
 
     public init(_ content: GeneratedContent) throws {
@@ -156,6 +173,24 @@ extension Array: Generable where Element: Generable {
     public typealias PartiallyGenerated = [Element.PartiallyGenerated]
 
     public static var generationSchema: GenerationSchema {
-        try! GenerationSchema(root: DynamicGenerationSchema(arrayOf: DynamicGenerationSchema(type: Element.self)))
+        let element = GenerationSchema.fragment(for: Element.self)
+        return try! GenerationSchema(
+            root: DynamicGenerationSchema(arrayOf: element.schema),
+            dependencies: element.dependencies
+        )
+    }
+}
+
+extension Never: Generable {
+    public static var generationSchema: GenerationSchema {
+        try! GenerationSchema(root: DynamicGenerationSchema(storage: .any), dependencies: [])
+    }
+
+    public init(_ content: GeneratedContent) throws {
+        throw GeneratedContentError.invalidValue("Never cannot be decoded from generated content.")
+    }
+
+    public var generatedContent: GeneratedContent {
+        switch self {}
     }
 }

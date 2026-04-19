@@ -1,7 +1,7 @@
 import Foundation
 
 public struct GenerationGuide<Value>: Codable, Equatable, Sendable {
-    enum Rule: Codable, Equatable, Sendable {
+    indirect enum Rule: Codable, Equatable, Sendable {
         case stringConstant(String)
         case stringAnyOf([String])
         case stringPattern(String)
@@ -11,6 +11,7 @@ public struct GenerationGuide<Value>: Codable, Equatable, Sendable {
         case numberMaximum(Decimal)
         case minimumCount(Int)
         case maximumCount(Int)
+        case element(DynamicGenerationSchema)
     }
 
     let rules: [Rule]
@@ -66,6 +67,23 @@ extension GenerationGuide where Value == Double {
     }
 }
 
+extension GenerationGuide where Value == Float {
+    public static func minimum(_ value: Float) -> Self {
+        Self(rule: .numberMinimum(Decimal(Double(value))))
+    }
+
+    public static func maximum(_ value: Float) -> Self {
+        Self(rule: .numberMaximum(Decimal(Double(value))))
+    }
+
+    public static func range(_ range: ClosedRange<Float>) -> Self {
+        Self(rules: [
+            .numberMinimum(Decimal(Double(range.lowerBound))),
+            .numberMaximum(Decimal(Double(range.upperBound)))
+        ])
+    }
+}
+
 extension GenerationGuide where Value == Decimal {
     public static func minimum(_ value: Decimal) -> Self {
         Self(rule: .numberMinimum(value))
@@ -80,20 +98,26 @@ extension GenerationGuide where Value == Decimal {
     }
 }
 
-extension GenerationGuide where Value: Collection {
-    public static func minimumCount(_ count: Int) -> Self {
-        Self(rule: .minimumCount(count))
+extension GenerationGuide {
+    public static func minimumCount<Element>(_ count: Int) -> GenerationGuide<[Element]> where Value == [Element] {
+        GenerationGuide<[Element]>(rule: .minimumCount(count))
     }
 
-    public static func maximumCount(_ count: Int) -> Self {
-        Self(rule: .maximumCount(count))
+    public static func maximumCount<Element>(_ count: Int) -> GenerationGuide<[Element]> where Value == [Element] {
+        GenerationGuide<[Element]>(rule: .maximumCount(count))
     }
 
-    public static func count(_ count: Int) -> Self {
-        Self(rules: [.minimumCount(count), .maximumCount(count)])
+    public static func count<Element>(_ count: Int) -> GenerationGuide<[Element]> where Value == [Element] {
+        GenerationGuide<[Element]>(rules: [.minimumCount(count), .maximumCount(count)])
     }
 
-    public static func count(_ range: ClosedRange<Int>) -> Self {
-        Self(rules: [.minimumCount(range.lowerBound), .maximumCount(range.upperBound)])
+    public static func count<Element>(_ range: ClosedRange<Int>) -> GenerationGuide<[Element]> where Value == [Element] {
+        GenerationGuide<[Element]>(rules: [.minimumCount(range.lowerBound), .maximumCount(range.upperBound)])
+    }
+
+    public static func element<Element>(
+        _ guide: GenerationGuide<Element>
+    ) -> GenerationGuide<[Element]> where Value == [Element], Element: Generable {
+        GenerationGuide<[Element]>(rule: .element(DynamicGenerationSchema(type: Element.self, guides: [guide])))
     }
 }
