@@ -88,6 +88,20 @@ public struct GenerationSchema: Codable, CustomDebugStringConvertible, Equatable
             dependencies = fragment.dependencies
         }
 
+        public init<Output>(
+            name: String,
+            description: String? = nil,
+            type: String.Type,
+            guides: [Regex<Output>]
+        ) {
+            self.init(
+                name: name,
+                description: description,
+                type: type,
+                guides: guides.map(GenerationGuide<String>.pattern)
+            )
+        }
+
         public init<Value>(
             name: String,
             description: String? = nil,
@@ -102,6 +116,20 @@ public struct GenerationSchema: Codable, CustomDebugStringConvertible, Equatable
                 isOptional: true
             )
             dependencies = fragment.dependencies
+        }
+
+        public init<Output>(
+            name: String,
+            description: String? = nil,
+            type: String?.Type,
+            guides: [Regex<Output>]
+        ) {
+            self.init(
+                name: name,
+                description: description,
+                type: type,
+                guides: guides.map(GenerationGuide<String>.pattern)
+            )
         }
     }
 

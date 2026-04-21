@@ -12,7 +12,6 @@ enum AIKitMacroDiagnostic: String, DiagnosticMessage {
     case guideRequiresProperty
     case duplicateGuide
     case enumRequiresCases
-    case enumAssociatedValuesAreUnsupported
     case enumGuideIsUnsupported
 
     var message: String {
@@ -35,8 +34,6 @@ enum AIKitMacroDiagnostic: String, DiagnosticMessage {
             "A property can only have one @Guide attribute."
         case .enumRequiresCases:
             "@Generable enums must declare at least one case."
-        case .enumAssociatedValuesAreUnsupported:
-            "@Generable enums do not support associated values yet."
         case .enumGuideIsUnsupported:
             "@Guide cannot be applied to enum cases."
         }

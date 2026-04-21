@@ -5,6 +5,7 @@ public struct GenerationGuide<Value>: Codable, Equatable, Sendable {
         case stringConstant(String)
         case stringAnyOf([String])
         case stringPattern(String)
+        case stringRegex(String)
         case integerMinimum(Int)
         case integerMaximum(Int)
         case numberMinimum(Decimal)
@@ -36,6 +37,10 @@ extension GenerationGuide where Value == String {
 
     public static func pattern(_ pattern: String) -> Self {
         Self(rule: .stringPattern(pattern))
+    }
+
+    public static func pattern<Output>(_ regex: Regex<Output>) -> Self {
+        Self(rule: .stringRegex(String(describing: regex)))
     }
 }
 

@@ -15,6 +15,10 @@ struct GenerableStructModel {
 struct GenerableEnumModel {
     var description: ExprSyntax?
     var choices: [EnumChoiceModel]
+
+    var usesDiscriminatedUnion: Bool {
+        choices.contains { !$0.payloads.isEmpty }
+    }
 }
 
 struct StoredPropertyModel {
@@ -36,6 +40,28 @@ struct GuideModel {
 struct EnumChoiceModel {
     var name: String
     var identifier: TokenSyntax
+    var payloads: [EnumPayloadModel]
+
+    init(name: String, identifier: TokenSyntax, payloads: [EnumPayloadModel] = []) {
+        self.name = name
+        self.identifier = identifier
+        self.payloads = payloads
+    }
+
+    var discriminatedType: TypeSyntax {
+        TypeSyntax(stringLiteral: "Discriminated\(name.upperCamelCasedIdentifier)")
+    }
+}
+
+struct EnumPayloadModel {
+    var name: String
+    var identifier: TokenSyntax
+    var type: TypeSyntax
+    var isLabeled: Bool
+
+    var partialGeneratedType: TypeSyntax {
+        TypeSyntax("\(type).PartiallyGenerated?")
+    }
 }
 
 enum StoredPropertyParseResult {
@@ -47,4 +73,14 @@ enum StoredPropertyParseResult {
 struct MacroArgument {
     var label: String?
     var expression: ExprSyntax
+}
+
+private extension String {
+    var upperCamelCasedIdentifier: String {
+        guard let first else {
+            return self
+        }
+
+        return String(first).uppercased() + String(dropFirst())
+    }
 }

@@ -76,6 +76,31 @@ private struct RegexResponse {
     var code: String
 }
 
+nonisolated(unsafe) private let runtimeAirportCodeRegex = /^[A-Z]{3}$/
+
+@Generable(description: "Runtime regex response.")
+private struct RuntimeRegexResponse {
+    @Guide(description: "Airport code", runtimeAirportCodeRegex)
+    var code: String
+}
+
+@Generable
+private enum AssociatedPayload: Equatable {
+    case text(String)
+    case count(Int)
+}
+
+@Generable
+private enum NamedAssociatedPayload: Equatable {
+    case point(x: Int, y: Int)
+    case done
+}
+
+@Generable
+private enum UnnamedAssociatedPayload: Equatable {
+    case pair(Int, String)
+}
+
 @Test func generatedContentRoundTripsThroughGeneratedStruct() throws {
     let arguments = WeatherArguments(city: "Tokyo", days: 3, units: nil)
     let content = arguments.generatedContent
@@ -101,6 +126,51 @@ private struct RegexResponse {
 
     #expect(try content.value(String.self) == "fahrenheit")
     #expect(try WeatherUnits(content) == .fahrenheit)
+}
+
+@Test func associatedEnumRoundTripsThroughGeneratedContent() throws {
+    let text = AssociatedPayload.text("hello")
+    let count = AssociatedPayload.count(3)
+
+    #expect(text.generatedContent.jsonValue == .object([
+        "type": .string("text"),
+        "value": .string("hello")
+    ]))
+    #expect(count.generatedContent.jsonValue == .object([
+        "type": .string("count"),
+        "value": .number(3)
+    ]))
+
+    #expect(try AssociatedPayload(text.generatedContent) == text)
+    #expect(try AssociatedPayload(count.generatedContent) == count)
+}
+
+@Test func associatedEnumNamedAndEmptyCasesRoundTrip() throws {
+    let point = NamedAssociatedPayload.point(x: 1, y: 2)
+    let done = NamedAssociatedPayload.done
+
+    #expect(point.generatedContent.jsonValue == .object([
+        "type": .string("point"),
+        "x": .number(1),
+        "y": .number(2)
+    ]))
+    #expect(done.generatedContent.jsonValue == .object([
+        "type": .string("done")
+    ]))
+
+    #expect(try NamedAssociatedPayload(point.generatedContent) == point)
+    #expect(try NamedAssociatedPayload(done.generatedContent) == done)
+}
+
+@Test func associatedEnumUnnamedPayloadFieldsRoundTrip() throws {
+    let pair = UnnamedAssociatedPayload.pair(1, "hello")
+
+    #expect(pair.generatedContent.jsonValue == .object([
+        "type": .string("pair"),
+        "value": .number(1),
+        "value1": .string("hello")
+    ]))
+    #expect(try UnnamedAssociatedPayload(pair.generatedContent) == pair)
 }
 
 @Test func nestedGenerableGeneratedContentRoundTrip() throws {
@@ -301,6 +371,31 @@ private struct RegexResponse {
     ])
 }
 
+@Test func associatedEnumSchemaUsesDiscriminatedDependencies() {
+    let schema = AssociatedPayload.generationSchema
+
+    #expect(schema.dependencies.compactMap(\.name) == ["DiscriminatedText", "DiscriminatedCount"])
+
+    guard case let .object(object) = schema.jsonSchema,
+          case let .array(choices)? = object["anyOf"],
+          case let .object(definitions)? = object["$defs"],
+          case let .object(textDefinition)? = definitions["DiscriminatedText"],
+          case let .object(textProperties)? = textDefinition["properties"],
+          case let .object(typeProperty)? = textProperties["type"],
+          case let .object(valueProperty)? = textProperties["value"]
+    else {
+        Issue.record("Expected associated enum schema with discriminator definitions.")
+        return
+    }
+
+    #expect(choices == [
+        .object(["$ref": .string("#/$defs/DiscriminatedText")]),
+        .object(["$ref": .string("#/$defs/DiscriminatedCount")])
+    ])
+    #expect(typeProperty["const"] == .string("text"))
+    #expect(valueProperty["type"] == .string("string"))
+}
+
 @Test func explicitNilGeneratedContentWritesNullProperties() {
     let content = ExplicitNilArguments(note: nil).generatedContent
 
@@ -360,6 +455,23 @@ private struct RegexResponse {
     #expect(code["type"] == .string("string"))
     #expect(code["description"] == .string("Airport code"))
     #expect(code["pattern"] == .string("^[A-Z]{3}$"))
+}
+
+@Test func regexGuideAPIAcceptsRuntimeRegexValues() {
+    let guide = GenerationGuide<String>.pattern(runtimeAirportCodeRegex)
+    let property = GenerationSchema.Property(name: "code", type: String.self, guides: [runtimeAirportCodeRegex])
+    let schema = GenerationSchema(type: RuntimeRegexResponse.self, properties: [property])
+
+    guard case let .object(object) = schema.jsonSchema,
+          case let .object(properties)? = object["properties"],
+          case let .object(code)? = properties["code"]
+    else {
+        Issue.record("Expected code property schema.")
+        return
+    }
+
+    #expect(code["type"] == .string("string"))
+    _ = guide
 }
 
 private func expectSchemaError(

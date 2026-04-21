@@ -249,7 +249,7 @@ extension DynamicGenerationSchema {
                 maximumElements = value
             case let .element(schema):
                 item = schema
-            case .stringConstant, .stringAnyOf, .stringPattern, .integerMinimum, .integerMaximum, .numberMinimum, .numberMaximum:
+            case .stringConstant, .stringAnyOf, .stringPattern, .stringRegex, .integerMinimum, .integerMaximum, .numberMinimum, .numberMaximum:
                 break
             }
         }
@@ -266,7 +266,7 @@ extension DynamicGenerationSchema {
                 result["enum"] = .array(values.map { .string($0) })
             case let .stringPattern(pattern):
                 result["pattern"] = .string(pattern)
-            case .integerMinimum, .integerMaximum, .numberMinimum, .numberMaximum, .minimumCount, .maximumCount, .element:
+            case .stringRegex, .integerMinimum, .integerMaximum, .numberMinimum, .numberMaximum, .minimumCount, .maximumCount, .element:
                 break
             }
         }
@@ -279,7 +279,7 @@ extension DynamicGenerationSchema {
                 result["minimum"] = .number(Decimal(value))
             case let .integerMaximum(value):
                 result["maximum"] = .number(Decimal(value))
-            case .stringConstant, .stringAnyOf, .stringPattern, .numberMinimum, .numberMaximum, .minimumCount, .maximumCount, .element:
+            case .stringConstant, .stringAnyOf, .stringPattern, .stringRegex, .numberMinimum, .numberMaximum, .minimumCount, .maximumCount, .element:
                 break
             }
         }
@@ -292,7 +292,7 @@ extension DynamicGenerationSchema {
                 result["minimum"] = .number(value)
             case let .numberMaximum(value):
                 result["maximum"] = .number(value)
-            case .stringConstant, .stringAnyOf, .stringPattern, .integerMinimum, .integerMaximum, .minimumCount, .maximumCount, .element:
+            case .stringConstant, .stringAnyOf, .stringPattern, .stringRegex, .integerMinimum, .integerMaximum, .minimumCount, .maximumCount, .element:
                 break
             }
         }
@@ -316,6 +316,8 @@ private extension GenerationGuide.Rule {
             .stringAnyOf(values)
         case let .stringPattern(pattern):
             .stringPattern(pattern)
+        case let .stringRegex(description):
+            .stringRegex(description)
         case let .minimumCount(value):
             .minimumCount(value)
         case let .maximumCount(value):

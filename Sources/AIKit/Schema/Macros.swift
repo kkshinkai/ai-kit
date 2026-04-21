@@ -1,9 +1,9 @@
 @attached(extension, conformances: Generable, names: named(init(_:)))
-@attached(member, names: named(generationSchema), named(generatedContent), named(PartiallyGenerated))
+@attached(member, names: named(generationSchema), named(generatedContent), named(PartiallyGenerated), arbitrary)
 public macro Generable(description: String? = nil) = #externalMacro(module: "AIKitMacros", type: "GenerableMacro")
 
 @attached(extension, conformances: Generable, names: named(init(_:)))
-@attached(member, names: named(generationSchema), named(generatedContent), named(PartiallyGenerated))
+@attached(member, names: named(generationSchema), named(generatedContent), named(PartiallyGenerated), arbitrary)
 public macro Generable(
     description: String? = nil,
     representNilExplicitlyInGeneratedContent: Bool

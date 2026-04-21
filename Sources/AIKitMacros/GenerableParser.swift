@@ -153,7 +153,6 @@ private extension GenerableParser {
         let arguments = MacroSyntaxSupport.argumentExpressions(from: attribute)
         var choices = [EnumChoiceModel]()
         var hasError = false
-        var sawAssociatedValueCase = false
 
         for member in declaration.memberBlock.members {
             guard let caseDecl = member.decl.as(EnumCaseDeclSyntax.self) else {
@@ -166,23 +165,17 @@ private extension GenerableParser {
             }
 
             for element in caseDecl.elements {
-                if element.parameterClause != nil {
-                    sawAssociatedValueCase = true
-                    context.diagnose(.enumAssociatedValuesAreUnsupported, at: element.name, when: emitDiagnostics)
-                    hasError = true
-                    continue
-                }
-
                 choices.append(
                     EnumChoiceModel(
                         name: element.name.text,
-                        identifier: element.name.trimmed
+                        identifier: element.name.trimmed,
+                        payloads: parseEnumPayloads(element.parameterClause)
                     )
                 )
             }
         }
 
-        if choices.isEmpty && !sawAssociatedValueCase {
+        if choices.isEmpty {
             context.diagnose(.enumRequiresCases, at: declaration.name, when: emitDiagnostics)
             hasError = true
         }
@@ -195,6 +188,50 @@ private extension GenerableParser {
             description: arguments.first { $0.label == "description" }?.expression,
             choices: choices
         )
+    }
+
+    static func parseEnumPayloads(_ clause: EnumCaseParameterClauseSyntax?) -> [EnumPayloadModel] {
+        guard let clause else {
+            return []
+        }
+
+        return clause.parameters.enumerated().map { index, parameter in
+            let name = payloadName(for: parameter, at: index)
+            return EnumPayloadModel(
+                name: name,
+                identifier: payloadIdentifier(for: parameter, fallbackName: name),
+                type: parameter.type.trimmed,
+                isLabeled: isLabeled(parameter)
+            )
+        }
+    }
+
+    static func payloadName(for parameter: EnumCaseParameterSyntax, at index: Int) -> String {
+        if isLabeled(parameter), let firstName = parameter.firstName, firstName.text != "_" {
+            return firstName.text
+        }
+
+        if let secondName = parameter.secondName, secondName.text != "_" {
+            return secondName.text
+        }
+
+        return index == 0 ? "value" : "value\(index)"
+    }
+
+    static func payloadIdentifier(for parameter: EnumCaseParameterSyntax, fallbackName: String) -> TokenSyntax {
+        if isLabeled(parameter), let firstName = parameter.firstName, firstName.text != "_" {
+            return firstName.trimmed
+        }
+
+        if let secondName = parameter.secondName, secondName.text != "_" {
+            return secondName.trimmed
+        }
+
+        return .identifier(fallbackName)
+    }
+
+    static func isLabeled(_ parameter: EnumCaseParameterSyntax) -> Bool {
+        parameter.colon != nil && parameter.firstName?.text != "_"
     }
 
     static func parseGuide(_ attribute: AttributeSyntax) -> GuideModel {
